@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Feed from "./feed/page";
 
 type Item = { id: number; title: string; source: string; tag: string; time: string; status: string; excerpt: string; rewrittenContent?: string; coverImage?: string };
 
@@ -20,7 +21,7 @@ const models = [
   { id: "openai-compatible", name: "OpenAI 兼容接口", note: "自定义地址 · 待配置", tone: "custom" },
 ];
 
-export default function Home() {
+function AdminHome() {
   const [activeNav, setActiveNav] = useState("总览");
   const [activeTag, setActiveTag] = useState("全部");
   const [items, setItems] = useState(seed);
@@ -69,4 +70,9 @@ export default function Home() {
       {notice && <div className="toast">✓　{notice}</div>}
     </section>
   </main>;
+}
+
+export default function Home() {
+  if (typeof window !== "undefined" && window.location.pathname === "/admin") return <AdminHome />;
+  return <Feed />;
 }
