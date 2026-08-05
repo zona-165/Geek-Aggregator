@@ -11,16 +11,16 @@ const defaults: FeedSource[] = [
   { name: "V2EX Linux", feedUrl: "https://www.v2ex.com/feed/linux.xml", category: "服务器", keywords: /Linux|Ubuntu|Debian|内核|命令|脚本|服务器|Docker|网络|SSH|Nginx|systemd|故障|排查|部署|安装|漏洞|Wayland/i, excludeKeywords: /手柄|输入法|桌面壁纸|游戏|招聘|出售|优惠/i },
   { name: "V2EX Docker", feedUrl: "https://www.v2ex.com/feed/docker.xml", category: "服务器", keywords: /Docker|容器|镜像|Compose|OrbStack|部署|Homelab|Registry|containerd|K8s|Kubernetes|服务|运维/i, excludeKeywords: /微信|聊天|游戏|招聘|优惠|出售/i },
   { name: "V2EX DevOps", feedUrl: "https://www.v2ex.com/feed/devops.xml", category: "服务器", keywords: /Jenkins|containerd|生产|环境|部署|流水线|DevOps|Linux|镜像|运维|监控|健康|自愈|Terraform|K8s|Docker|CI|CD|架构/i, excludeKeywords: /代理|招聘|出售|优惠|推广|群聊/i },
-  // 项目官方 release 流：来源明确，适合做版本更新和工具速览。
-  { name: "流媒体检测脚本更新", feedUrl: "https://github.com/lmc999/RegionRestrictionCheck/commits/main.atom", category: "服务器", keywords: /region|media|netflix|youtube|tiktok|bilibili|check|unlock|流媒体|检测|解锁/i, excludeKeywords: /update ad|promotional/i },
   { name: "IT之家 AI", feedUrl: "https://www.ithome.com/rss/", category: "AI 前沿" },
   { name: "36氪科技", feedUrl: "https://36kr.com/feed", category: "AI 前沿" },
+  { name: "极客公园", feedUrl: "https://www.geekpark.net/rss", category: "AI 前沿", keywords: /AI|人工智能|大模型|机器人|芯片|科技|互联网|智能|软件|开源/i },
+  { name: "虎嗅科技", feedUrl: "https://feedx.net/rss/huxiu.xml", category: "AI 前沿", keywords: /AI|人工智能|大模型|科技|互联网|产品|创业|芯片|机器人|软件|开源/i },
+  { name: "爱范儿", feedUrl: "https://www.ifanr.com/feed", category: "AI 前沿", keywords: /AI|人工智能|大模型|科技|苹果|软件|工具|机器人|智能|开源/i },
   { name: "InfoQ 中文", feedUrl: "https://www.infoq.cn/feed", category: "编程学习" },
+  { name: "阮一峰的网络日志", feedUrl: "https://www.ruanyifeng.com/blog/atom.xml", category: "编程学习" },
   { name: "开源中国", feedUrl: "https://www.oschina.net/news/rss", category: "开源项目" },
   { name: "少数派", feedUrl: "https://sspai.com/feed", category: "极客工具" },
-  { name: "Neovim 官方更新", feedUrl: "https://github.com/neovim/neovim/releases.atom", category: "极客工具" },
-  { name: "Ollama 官方更新", feedUrl: "https://github.com/ollama/ollama/releases.atom", category: "AI 前沿" },
-  { name: "uv 官方更新", feedUrl: "https://github.com/astral-sh/uv/releases.atom", category: "编程学习" },
+  { name: "小众软件", feedUrl: "https://www.appinn.com/feed/", category: "极客工具" },
 ];
 
 const junkTitle = /招聘|招聘信息|推广|广告位|优惠券|邀请码|返利|返现|出售|出一台|求购|代购|转让|跑路|机场|带货|商务合作|代理加盟|(?:限时|全网)折扣/i;
