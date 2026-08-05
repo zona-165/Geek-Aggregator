@@ -4,11 +4,16 @@ const defaults = [
   // 社区讨论流：只保存标题、摘要、来源链接和可公开引用的封面地址。
   { name: "V2EX 编程讨论", feedUrl: "https://www.v2ex.com/feed/programmer.xml", category: "编程学习" },
   { name: "V2EX 社区动态", feedUrl: "https://www.v2ex.com/go/rss", category: "AI 前沿" },
+  { name: "V2EX 服务器", feedUrl: "https://www.v2ex.com/feed/server.xml", category: "服务器" },
+  { name: "V2EX VPS", feedUrl: "https://www.v2ex.com/feed/vps.xml", category: "服务器" },
+  { name: "V2EX Linux", feedUrl: "https://www.v2ex.com/feed/linux.xml", category: "服务器" },
+  { name: "V2EX Docker", feedUrl: "https://www.v2ex.com/feed/docker.xml", category: "服务器" },
+  { name: "V2EX DevOps", feedUrl: "https://www.v2ex.com/feed/devops.xml", category: "服务器" },
   // 项目官方 release 流：来源明确，适合做版本更新和工具速览。
+  { name: "流媒体检测脚本更新", feedUrl: "https://github.com/lmc999/RegionRestrictionCheck/commits/main.atom", category: "服务器" },
   { name: "Neovim 官方更新", feedUrl: "https://github.com/neovim/neovim/releases.atom", category: "极客工具" },
   { name: "Ollama 官方更新", feedUrl: "https://github.com/ollama/ollama/releases.atom", category: "AI 前沿" },
   { name: "uv 官方更新", feedUrl: "https://github.com/astral-sh/uv/releases.atom", category: "编程学习" },
-  { name: "Immich 官方更新", feedUrl: "https://github.com/immich-app/immich/releases.atom", category: "服务器" },
 ];
 
 function readTag(xml: string, tag: string) { return (xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "i"))?.[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]+>/g, "").trim(); }
