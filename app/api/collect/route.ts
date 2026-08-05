@@ -43,6 +43,51 @@ function readImage(entry: string) {
 
 type XCollectBody = { xBearerToken?: string; xQueries?: { technology?: string; openSource?: string } };
 
+async function collectGithub(existing: Awaited<ReturnType<typeof listArticles>>) {
+  const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 45).toISOString().slice(0, 10);
+  const url = new URL("https://api.github.com/search/repositories");
+  url.searchParams.set("q", `stars:>100 pushed:>${since} archived:false`);
+  url.searchParams.set("sort", "stars");
+  url.searchParams.set("order", "desc");
+  url.searchParams.set("per_page", "10");
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "GeekContentLab/1.0",
+    },
+  });
+  if (!response.ok) return 0;
+  const payload = await response.json() as { items?: Array<{ full_name: string; name: string; html_url: string; description?: string; language?: string; stargazers_count: number; forks_count: number; pushed_at?: string; owner?: { login?: string }; topics?: string[] }> };
+  const seen = new Set(existing.map(x => x.sourceUrl).filter(Boolean));
+  let added = 0;
+  for (const repo of payload.items ?? []) {
+    if (!repo.full_name || seen.has(repo.html_url)) continue;
+    seen.add(repo.html_url);
+    const description = repo.description || "暂无项目简介";
+    const meta = [
+      repo.language ? `语言：${repo.language}` : "",
+      `Star：${repo.stargazers_count}`,
+      `Fork：${repo.forks_count}`,
+      repo.topics?.length ? `标签：${repo.topics.slice(0, 6).join("、")}` : "",
+    ].filter(Boolean).join(" · ");
+    const content = `项目简介：${description}\n\n${meta}\n\n项目地址：${repo.html_url}`;
+    await addArticle({
+      title: `GitHub 热门项目：${repo.name}`,
+      source: "GitHub 热门项目",
+      sourceUrl: repo.html_url,
+      tag: "开源项目",
+      time: repo.pushed_at ?? new Date().toISOString(),
+      status: "待改写",
+      excerpt: `${description}｜${meta}`,
+      originalContent: content,
+      coverImage: `https://opengraph.githubassets.com/1/${repo.full_name}`,
+    });
+    added++;
+  }
+  return added;
+}
+
 async function collectX(token: string, queries: XCollectBody["xQueries"], existing: Awaited<ReturnType<typeof listArticles>>) {
   const rules = [
     { name: "X · 技术动态", tag: "编程学习", query: queries?.technology || "(linux OR docker OR kubernetes OR nginx OR bbr OR server) -is:retweet" },
@@ -101,6 +146,7 @@ export async function POST(request: Request) {
       }
     }
     if (body.xBearerToken?.trim()) added += await collectX(body.xBearerToken.trim(), body.xQueries, existing);
+    added += await collectGithub(existing);
     return Response.json({ added, message: `采集完成，新增 ${added} 篇` });
   } catch { return Response.json({ error: "采集服务暂时不可用，请检查 RSS 地址或服务器网络" }, { status: 503 }); }
 }
