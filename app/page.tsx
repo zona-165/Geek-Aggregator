@@ -1,0 +1,67 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type Item = { id: number; title: string; source: string; tag: string; time: string; status: string; excerpt: string; rewrittenContent?: string; coverImage?: string };
+
+const seed: Item[] = [
+  { id: 1, title: "OpenAI 发布新一代智能体工具链，开发者如何快速上手？", source: "OpenAI Blog", tag: "AI 前沿", time: "今天 09:32", status: "待改写", excerpt: "从模型调用、工具编排到任务评估，一次看懂智能体应用的完整开发路径。", coverImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=800&q=80" },
+  { id: 2, title: "用 Docker Compose 搭建一套私人 AI 工作台", source: "Hacker News", tag: "服务器", time: "今天 08:16", status: "已改写", excerpt: "无需复杂运维，用一份配置文件快速运行本地知识库、模型服务与监控。", coverImage: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80" },
+  { id: 3, title: "这 8 个开源项目，正在重新定义开发者效率", source: "GitHub Trending", tag: "开源项目", time: "昨天 21:05", status: "已发布", excerpt: "精选近期增长最快、真正值得收藏的开源工具，并附上实用场景分析。", coverImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80" },
+  { id: 4, title: "从零理解 RAG：为什么你的 AI 问答总是答非所问", source: "掘金", tag: "编程学习", time: "昨天 18:40", status: "待审核", excerpt: "切分、召回、重排和评估，拆解检索增强生成中的关键工程细节。", coverImage: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=800&q=80" },
+  { id: 5, title: "极客玩家的终端工具箱：让命令行变得更好用", source: "少数派", tag: "极客工具", time: "08-04 14:22", status: "待改写", excerpt: "从终端复用到文件搜索，分享一组能立即提升工作流的轻量工具。", coverImage: "https://images.unsplash.com/photo-1629654297299-c8506221ca97?auto=format&fit=crop&w=800&q=80" },
+];
+
+const nav = ["总览", "采集箱", "改写工作台", "发布素材", "来源管理"];
+const tags = ["全部", "AI 前沿", "编程学习", "极客工具", "服务器", "开源项目"];
+const models = [
+  { id: "deepseek-v4-flash", name: "deepseek-v4-flash", note: "快速改写 · 低成本", tone: "flash" },
+  { id: "deepseek-v4-pro", name: "deepseek-v4-pro", note: "深度改写 · 高质量", tone: "pro" },
+  { id: "openai-compatible", name: "OpenAI 兼容接口", note: "自定义地址 · 待配置", tone: "custom" },
+];
+
+export default function Home() {
+  const [activeNav, setActiveNav] = useState("总览");
+  const [activeTag, setActiveTag] = useState("全部");
+  const [items, setItems] = useState(seed);
+  const [selected, setSelected] = useState<Item>(seed[0]);
+  const [notice, setNotice] = useState("");
+  const [query, setQuery] = useState("");
+  const [persistent, setPersistent] = useState(false);
+  const [model, setModel] = useState("deepseek-v4-flash");
+  const [editTitle, setEditTitle] = useState(seed[0].title);
+  const [editContent, setEditContent] = useState(seed[0].excerpt);
+  const [editImage, setEditImage] = useState(seed[0].coverImage ?? "");
+  const [aiWritingEnabled, setAiWritingEnabled] = useState(true);
+  const [articlePane, setArticlePane] = useState<"original" | "rewritten">("rewritten");
+  useEffect(() => { fetch("/api/articles").then(r => r.json()).then((data: { items?: Item[]; persistent?: boolean }) => { if (data.persistent && data.items?.length) { setItems(data.items); setSelected(data.items[0]); } setPersistent(Boolean(data.persistent)); }).catch(() => undefined); }, []);
+  const filtered = useMemo(() => items.filter(x => {
+    const navMatch = activeNav === "采集箱" ? ["待改写", "待审核"].includes(x.status) : activeNav === "发布素材" ? x.status === "已发布" : true;
+    return navMatch && (activeTag === "全部" || x.tag === activeTag) && `${x.title}${x.source}`.includes(query);
+  }), [items, activeTag, query, activeNav]);
+  const flash = (message: string) => { setNotice(message); window.setTimeout(() => setNotice(""), 2400); };
+  const collect = () => { flash("正在采集来源…"); fetch("/api/collect", { method: "POST" }).then(r => r.json()).then((data: { message?: string; error?: string }) => { flash(data.message ?? data.error ?? "采集完成"); if (!data.error) window.location.reload(); }).catch(() => flash("采集服务暂不可用")); };
+  const choose = (item: Item) => { setSelected(item); setEditTitle(item.title); setEditContent(item.excerpt); setEditImage(item.coverImage ?? ""); };
+  const saveEdit = () => { const next = { ...selected, title: editTitle, excerpt: editContent, coverImage: editImage, status: "待审核" }; setSelected(next); setItems(xs => xs.map(x => x.id === selected.id ? next : x)); fetch("/api/articles", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: selected.id, title: editTitle, rewrittenContent: editContent, coverImage: editImage, status: "待审核" }) }).catch(() => undefined); flash("素材已保存，等待审核"); };
+  const publish = () => { const next = { ...selected, title: editTitle, excerpt: editContent, coverImage: editImage, status: "已发布" }; setSelected(next); setItems(xs => xs.map(x => x.id === selected.id ? next : x)); fetch("/api/articles", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: selected.id, title: editTitle, rewrittenContent: editContent, coverImage: editImage, status: "已发布" }) }).catch(() => undefined); flash("已标记为发布素材"); };
+  const rewrite = () => { if (!aiWritingEnabled) { flash("AI 写作已暂停，请先打开开关"); return; } const rewritten = `${editContent}\n\n本文由极客采集台整理改写，适合发布到微信公众号。`; const next = { ...selected, status: "已改写", rewrittenContent: rewritten, excerpt: rewritten }; setItems(xs => xs.map(x => x.id === selected.id ? next : x)); setSelected(next); setEditContent(rewritten); fetch("/api/articles", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: selected.id, status: "已改写", rewrittenContent: rewritten }) }).catch(() => undefined); flash(`${models.find(x => x.id === model)?.name} 已生成公众号风格改写稿`); };
+  const copy = async () => { await navigator.clipboard?.writeText(`${selected.title}\n\n${selected.excerpt}\n\n来源：${selected.source}`); flash("已复制公众号素材"); };
+
+  return <main className="shell">
+    <aside className="sidebar">
+      <div className="brand"><span className="brand-mark">⌁</span><span>极客采集台<small>CONTENT LAB</small></span></div>
+      <div className="side-label">工作台</div>
+      <nav>{nav.map((n, i) => <button key={n} onClick={() => setActiveNav(n)} className={activeNav === n ? "nav active" : "nav"}><span className="nav-icon">{["◈", "▣", "✦", "▤", "⊙"][i]}</span>{n}{i === 1 && <b>24</b>}</button>)}</nav>
+      <div className="side-label source-label">采集来源 <button onClick={() => flash("来源管理即将开放")}>＋</button></div>
+      <div className="sources"><span><i className="dot orange"/>AI / 科技</span><span><i className="dot blue"/>GitHub Trending</span><span><i className="dot purple"/>开发者社区</span></div>
+      <div className="sidebar-bottom"><div className="server"><span className="pulse"/>采集服务运行中<small>下次采集：12 分钟后</small></div><div className="user"><span className="avatar">林</span><span>林默<small>管理员</small></span><span className="more">•••</span></div></div>
+    </aside>
+    <section className="content">
+      <header className="topbar"><div className="crumb">内容工作台 <span>/</span> {activeNav}</div><div className="top-actions"><button className="icon-btn" onClick={() => flash("暂无新的系统通知")}>♧</button><button className="user-mini">林默 <span>⌄</span></button></div></header>
+      <div className="page-head"><div><div className="eyebrow">WED · AUG 06, 2026</div><h1>早上好，林默 <span>✦</span></h1><p>采集完成后自动进入 AI 改写队列。{persistent && <span className="db-badge"> · 已连接数据库</span>}</p></div><div style={{display:"flex",gap:10,alignItems:"center"}}><button className={aiWritingEnabled ? "collect-btn" : "filter"} onClick={() => { setAiWritingEnabled(x => !x); flash(aiWritingEnabled ? "AI 写作已暂停" : "AI 写作已开启"); }}>● AI 写作：{aiWritingEnabled ? "开启" : "暂停"}</button><button className="collect-btn" onClick={collect}>↻ 立即采集</button></div></div>
+      <div className="stats"><div><span>今日新增</span><strong>28</strong><em>+12.5%</em><small>较昨日</small></div><div><span>待处理</span><strong>16</strong><em className="neutral">—</em><small>篇待改写</small></div><div><span>本周发布</span><strong>42</strong><em>+8.2%</em><small>较上周</small></div><div><span>内容来源</span><strong>06</strong><em className="neutral">活跃</em><small>个来源</small></div></div>
+      <div className="workspace"><div className="list-pane"><div className="section-title"><div><h2>内容流</h2><span>采集原文 → AI 改写 → 审核发布</span></div><button className="filter">筛选 <span>⌄</span></button></div><div className="toolbar"><div className="search">⌕<input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索标题或来源" /></div><div className="tags">{tags.map(t => <button key={t} className={activeTag === t ? "tag active" : "tag"} onClick={() => setActiveTag(t)}>{t}</button>)}</div></div><div className="items">{filtered.map(item => <button className={selected.id === item.id ? "item selected" : "item"} key={item.id} onClick={() => choose(item)}>{item.coverImage && <img className="item-image" src={item.coverImage} alt="" />}<div className="item-body"><div className="item-top"><span className="item-tag">{item.tag}</span><span className={`status ${item.status === "已发布" ? "published" : item.status === "已改写" ? "done" : ""}`}>{item.status}</span></div><h3>{item.title}</h3><p>{item.excerpt}</p><div className="item-meta"><span>{item.source}</span><span>·</span><span>{item.time}</span><span className="arrow">→</span></div></div></button>)}</div></div><article className="editor"><div className="editor-head"><div><span className="tiny-label">ORIGINAL / REWRITTEN</span><h2>文章处理台</h2></div><span className="status done">{selected.status}</span></div>{editImage && <img className="editor-image" src={editImage} alt="文章封面" />}<div className="source-card"><span className="item-tag">{selected.tag}</span><small>来源 · {selected.source}</small><h3>{selected.title}</h3></div><div className="model-picker"><div><span>改写模型</span><small>{aiWritingEnabled ? models.find(x => x.id === model)?.note : "已暂停自动写作"}</small></div><select disabled={!aiWritingEnabled} value={model} onChange={e => setModel(e.target.value)}>{models.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div><div className="article-tabs"><button className={articlePane === "original" ? "tag active" : "tag"} onClick={() => setArticlePane("original")}>原文章</button><button className={articlePane === "rewritten" ? "tag active" : "tag"} onClick={() => setArticlePane("rewritten")}>AI 重写内容</button></div><label>标题 <input value={editTitle} onChange={e => setEditTitle(e.target.value)} /></label><label>封面图地址 <input value={editImage} onChange={e => setEditImage(e.target.value)} placeholder="https://..." /></label><label>{articlePane === "original" ? "原文章内容" : "重写后内容"} <textarea value={articlePane === "original" ? (selected.excerpt || "暂无原文") : editContent} onChange={e => articlePane === "rewritten" && setEditContent(e.target.value)} readOnly={articlePane === "original"} /></label><div className="editor-foot"><button className="rewrite-btn" onClick={rewrite}>✦ AI 重新改写</button><button className="copy-btn" onClick={copy}>复制公众号素材　↗</button><button className="save-btn" onClick={saveEdit}>提交审核</button><button className="publish-btn" onClick={publish}>标记已发布</button></div></article></div>
+      {notice && <div className="toast">✓　{notice}</div>}
+    </section>
+  </main>;
+}

@@ -1,0 +1,5 @@
+dist
+.git
+.wrangler
+.next
+*.log
