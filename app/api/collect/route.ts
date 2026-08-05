@@ -41,9 +41,47 @@ function readImage(entry: string) {
     ?? null;
 }
 
-export async function POST() {
+type XCollectBody = { xBearerToken?: string; xQueries?: { technology?: string; openSource?: string } };
+
+async function collectX(token: string, queries: XCollectBody["xQueries"], existing: Awaited<ReturnType<typeof listArticles>>) {
+  const rules = [
+    { name: "X · 技术动态", tag: "编程学习", query: queries?.technology || "(linux OR docker OR kubernetes OR nginx OR bbr OR server) -is:retweet" },
+    { name: "X · 开源项目", tag: "开源项目", query: queries?.openSource || "(opensource OR \"open source\" OR github OR gitlab) -is:retweet" },
+  ];
+  const seen = new Set(existing.map(x => x.sourceUrl).filter(Boolean));
+  let added = 0;
+  for (const rule of rules) {
+    const url = new URL("https://api.x.com/2/tweets/search/recent");
+    url.searchParams.set("query", `${rule.query} -is:reply`);
+    url.searchParams.set("max_results", "10");
+    url.searchParams.set("tweet.fields", "created_at,attachments,author_id");
+    url.searchParams.set("expansions", "attachments.media_keys,author_id");
+    url.searchParams.set("media.fields", "url,preview_image_url,type");
+    url.searchParams.set("user.fields", "username,name");
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) continue;
+    const payload = await response.json() as { data?: Array<{ id: string; text: string; created_at?: string; author_id?: string; attachments?: { media_keys?: string[] } }>; includes?: { users?: Array<{ id: string; username: string }>; media?: Array<{ media_key: string; type: string; url?: string; preview_image_url?: string }> } };
+    const users = new Map((payload.includes?.users ?? []).map(x => [x.id, x.username]));
+    const media = new Map((payload.includes?.media ?? []).map(x => [x.media_key, x]));
+    for (const post of payload.data ?? []) {
+      const sourceUrl = `https://x.com/${users.get(post.author_id ?? "") ?? "i"}/status/${post.id}`;
+      if (seen.has(sourceUrl)) continue;
+      seen.add(sourceUrl);
+      const image = (post.attachments?.media_keys ?? []).map(key => media.get(key)).find(x => x?.url || x?.preview_image_url);
+      const text = post.text.trim();
+      const title = text.split(/\n|。|！|!/)[0].slice(0, 80) || "X 技术动态";
+      await addArticle({ title, source: rule.name, sourceUrl, tag: rule.tag, time: post.created_at ?? new Date().toISOString(), status: "待改写", excerpt: text, originalContent: text, coverImage: image?.url ?? image?.preview_image_url ?? fallbackCovers[rule.tag] });
+      added++;
+    }
+  }
+  return added;
+}
+
+export async function POST(request: Request) {
   try {
     let added = 0;
+    let body: XCollectBody = {};
+    try { body = await request.json() as XCollectBody; } catch { /* RSS-only collection */ }
     const existing = await listArticles();
     for (const source of defaults) {
       const response = await fetch(source.feedUrl, { headers: { "User-Agent": "GeekContentLab/1.0" } });
@@ -62,6 +100,7 @@ export async function POST() {
         added++;
       }
     }
+    if (body.xBearerToken?.trim()) added += await collectX(body.xBearerToken.trim(), body.xQueries, existing);
     return Response.json({ added, message: `采集完成，新增 ${added} 篇` });
   } catch { return Response.json({ error: "采集服务暂时不可用，请检查 RSS 地址或服务器网络" }, { status: 503 }); }
 }
