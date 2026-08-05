@@ -1,6 +1,4 @@
-import { eq } from "drizzle-orm";
-import { getDb } from "../../../db";
-import { articles, sources } from "../../../db/schema";
+import { addArticle, listArticles } from "../../../db/file-store";
 
 const defaults = [
   { name: "GitHub Trending", feedUrl: "https://github.com/trending.atom", category: "开源项目" },
@@ -12,22 +10,19 @@ function readEntries(xml: string) { return [...xml.matchAll(/<(entry|item)(?:\s[
 
 export async function POST() {
   try {
-    const db = getDb();
-    for (const source of defaults) await db.insert(sources).values({ ...source, createdAt: new Date() }).onConflictDoNothing();
-    const active = await db.select().from(sources).where(eq(sources.enabled, true));
     let added = 0;
-    for (const source of active) {
+    const existing = await listArticles();
+    for (const source of defaults) {
       const response = await fetch(source.feedUrl, { headers: { "User-Agent": "GeekContentLab/1.0" } });
       if (!response.ok) continue;
       for (const entry of readEntries(await response.text()).slice(0, 10)) {
         const title = readTag(entry, "title");
         const link = entry.match(/<link[^>]+href=["']([^"']+)["']/i)?.[1] ?? readTag(entry, "link");
         if (!title || !link) continue;
-        const exists = await db.select({ id: articles.id }).from(articles).where(eq(articles.sourceUrl, link)).limit(1);
-        if (exists.length) continue;
+        if (existing.some(x => x.sourceUrl === link)) continue;
         const image = entry.match(/<media:content[^>]+url=["']([^"']+)/i)?.[1] ?? entry.match(/<enclosure[^>]+url=["']([^"']+)/i)?.[1] ?? null;
         const now = new Date();
-        await db.insert(articles).values({ sourceId: source.id, title, sourceName: source.name, sourceUrl: link, category: source.category, originalContent: readTag(entry, "summary") || readTag(entry, "description"), coverImage: image, createdAt: now, updatedAt: now });
+        await addArticle({ title, source: source.name, sourceUrl: link, tag: source.category, time: now.toISOString(), status: "待改写", excerpt: readTag(entry, "summary") || readTag(entry, "description"), originalContent: readTag(entry, "summary") || readTag(entry, "description"), coverImage: image ?? undefined });
         added++;
       }
     }
