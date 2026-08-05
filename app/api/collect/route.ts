@@ -3,6 +3,11 @@ import { addArticle, listArticles } from "../../../db/file-store";
 const defaults = [
   { name: "GitHub Trending", feedUrl: "https://github.com/trending.atom", category: "开源项目" },
   { name: "Hacker News", feedUrl: "https://hnrss.org/frontpage", category: "极客工具" },
+  { name: "开源中国", feedUrl: "https://www.oschina.net/news/rss", category: "开源项目" },
+  { name: "少数派", feedUrl: "https://sspai.com/feed", category: "极客工具" },
+  { name: "IT之家 AI", feedUrl: "https://www.ithome.com/rss/", category: "AI 前沿" },
+  { name: "InfoQ 中文", feedUrl: "https://www.infoq.cn/feed", category: "编程学习" },
+  { name: "36氪科技", feedUrl: "https://36kr.com/feed", category: "AI 前沿" },
 ];
 
 function readTag(xml: string, tag: string) { return (xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "i"))?.[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]+>/g, "").trim(); }
