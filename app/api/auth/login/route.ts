@@ -1,0 +1,2 @@
+import { COOKIE_NAME, createSession, validCredentials } from "../../../../lib/auth";
+export async function POST(request: Request) { const body = await request.json().catch(() => ({})) as { username?: string; password?: string }; if (!validCredentials(body.username ?? "", body.password ?? "")) return Response.json({ error: "账号或密码错误" }, { status: 401 }); return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json", "Set-Cookie": `${COOKIE_NAME}=${createSession()}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800` } }); }
