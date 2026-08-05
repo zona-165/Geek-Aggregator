@@ -13,15 +13,33 @@ const defaults: FeedSource[] = [
   { name: "V2EX DevOps", feedUrl: "https://www.v2ex.com/feed/devops.xml", category: "服务器", keywords: /Jenkins|containerd|生产|环境|部署|流水线|DevOps|Linux|镜像|运维|监控|健康|自愈|Terraform|K8s|Docker|CI|CD|架构/i, excludeKeywords: /代理|招聘|出售|优惠|推广|群聊/i },
   // 项目官方 release 流：来源明确，适合做版本更新和工具速览。
   { name: "流媒体检测脚本更新", feedUrl: "https://github.com/lmc999/RegionRestrictionCheck/commits/main.atom", category: "服务器", keywords: /region|media|netflix|youtube|tiktok|bilibili|check|unlock|流媒体|检测|解锁/i, excludeKeywords: /update ad|promotional/i },
+  { name: "IT之家 AI", feedUrl: "https://www.ithome.com/rss/", category: "AI 前沿" },
+  { name: "36氪科技", feedUrl: "https://36kr.com/feed", category: "AI 前沿" },
+  { name: "InfoQ 中文", feedUrl: "https://www.infoq.cn/feed", category: "编程学习" },
+  { name: "开源中国", feedUrl: "https://www.oschina.net/news/rss", category: "开源项目" },
+  { name: "少数派", feedUrl: "https://sspai.com/feed", category: "极客工具" },
   { name: "Neovim 官方更新", feedUrl: "https://github.com/neovim/neovim/releases.atom", category: "极客工具" },
   { name: "Ollama 官方更新", feedUrl: "https://github.com/ollama/ollama/releases.atom", category: "AI 前沿" },
   { name: "uv 官方更新", feedUrl: "https://github.com/astral-sh/uv/releases.atom", category: "编程学习" },
 ];
 
 const junkTitle = /招聘|招聘信息|推广|广告位|优惠券|邀请码|返利|返现|出售|出一台|求购|代购|转让|跑路|机场|带货|商务合作|代理加盟|(?:限时|全网)折扣/i;
+const fallbackCovers: Record<string, string> = {
+  "AI 前沿": "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=82",
+  "编程学习": "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=82",
+  "开源项目": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=82",
+  "极客工具": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=82",
+  "服务器": "https://images.unsplash.com/photo-1451187580459-43490279cfa4?auto=format&fit=crop&w=1200&q=82",
+};
 
 function readTag(xml: string, tag: string) { return (xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "i"))?.[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]+>/g, "").trim(); }
 function readEntries(xml: string) { return [...xml.matchAll(/<(entry|item)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/gi)].map(m => m[2]); }
+function readImage(entry: string) {
+  return entry.match(/<(?:media:content|media:thumbnail|enclosure)[^>]+(?:url|href)=["']([^"']+)["']/i)?.[1]
+    ?? entry.match(/<image[\s\S]*?<url>([^<]+)<\/url>/i)?.[1]
+    ?? entry.match(/<itunes:image[^>]+href=["']([^"']+)["']/i)?.[1]
+    ?? null;
+}
 
 export async function POST() {
   try {
@@ -38,9 +56,9 @@ export async function POST() {
         if (source.keywords && !source.keywords.test(title)) continue;
         if (source.excludeKeywords?.test(title)) continue;
         if (existing.some(x => x.sourceUrl === link)) continue;
-        const image = entry.match(/<media:content[^>]+url=["']([^"']+)/i)?.[1] ?? entry.match(/<enclosure[^>]+url=["']([^"']+)/i)?.[1] ?? null;
+        const image = readImage(entry) ?? fallbackCovers[source.category];
         const now = new Date();
-        await addArticle({ title, source: source.name, sourceUrl: link, tag: source.category, time: now.toISOString(), status: "待改写", excerpt: readTag(entry, "summary") || readTag(entry, "description"), originalContent: readTag(entry, "summary") || readTag(entry, "description"), coverImage: image ?? undefined });
+        await addArticle({ title, source: source.name, sourceUrl: link, tag: source.category, time: now.toISOString(), status: "待改写", excerpt: readTag(entry, "summary") || readTag(entry, "description"), originalContent: readTag(entry, "summary") || readTag(entry, "description"), coverImage: image });
         added++;
       }
     }
